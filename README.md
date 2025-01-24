@@ -6,6 +6,9 @@
 <!-- badges: start -->
 
 [![pkgdown](https://github.com/dmolitor/jetty/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/dmolitor/jetty/actions/workflows/pkgdown.yaml)
+[![R-CMD-check](https://github.com/dmolitor/jetty/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/dmolitor/jetty/actions/workflows/R-CMD-check.yaml)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/jetty)](https://CRAN.R-project.org/package=jetty)
 <!-- badges: end -->
 
 > Execute R functions or code blocks within a Docker container.
@@ -33,9 +36,19 @@ package attempts to achieve this!
 - Shows and/or collects the standard output and standard error of the
   Docker subprocess.
 
-## Install
+- Executes an R script in a subprocess within a Docker container. The
+  user specifies a directory to mount, enabling the script to interact
+  with its contents.
 
-To install jetty from GitHub:
+## Installation
+
+Install jetty from CRAN:
+
+``` r
+install.packages("jetty")
+```
+
+Or install the development version of jetty from GitHub:
 
 ``` r
 # install.packages("pak")
@@ -120,16 +133,16 @@ jetty::run(
 #> Loading required package: Matrix
 #> 10 x 2 sparse Matrix of class "dgCMatrix"
 #>                   
-#>  [1,]  0.800 -0.38
-#>  [2,]  0.430  0.63
-#>  [3,]  0.210  0.49
-#>  [4,]  0.890 -0.58
-#>  [5,]  0.057 -0.18
-#>  [6,]  0.380  0.27
-#>  [7,] -0.700 -0.48
-#>  [8,]  1.100  0.22
-#>  [9,] -0.890  0.38
-#> [10,] -0.290 -0.27
+#>  [1,] -0.40 -0.990
+#>  [2,]  0.48  0.390
+#>  [3,]  0.66 -0.830
+#>  [4,]  0.19  0.340
+#>  [5,]  1.30  0.850
+#>  [6,]  0.35  1.500
+#>  [7,]  1.10  1.100
+#>  [8,]  0.22  0.190
+#>  [9,] -0.69 -0.014
+#> [10,]  1.80  0.240
 ```
 
 and
@@ -140,17 +153,17 @@ jetty::run(
   args = list(nrow = 10, ncol = 2)
 )
 #> 10 x 2 sparse Matrix of class "dgCMatrix"
-#>                     
-#>  [1,]  1.50000  0.68
-#>  [2,] -0.71000  1.20
-#>  [3,]  0.87000  0.43
-#>  [4,]  1.10000  1.10
-#>  [5,]  1.10000 -0.13
-#>  [6,]  0.00034 -0.38
-#>  [7,] -2.20000 -0.95
-#>  [8,]  1.20000 -0.27
-#>  [9,]  0.80000 -1.50
-#> [10,]  0.73000 -0.20
+#>                    
+#>  [1,]  0.73  0.0033
+#>  [2,]  0.62  0.6000
+#>  [3,] -1.10 -0.1600
+#>  [4,]  1.20 -0.1700
+#>  [5,]  1.40  1.0000
+#>  [6,]  1.00  0.4700
+#>  [7,] -0.74 -0.2100
+#>  [8,]  0.75  0.0940
+#>  [9,] -0.26 -1.9000
+#> [10,]  0.20 -0.3000
 ```
 
 #### Installing required packages
@@ -184,7 +197,7 @@ jetty::run(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-10-1.png" width="80%" />
+<img src="man/figures/README-unnamed-chunk-11-1.png" width="80%" />
 
 **Note**: this feature uses
 [`renv::dependencies`](https://rstudio.github.io/renv/reference/dependencies.html)
@@ -305,3 +318,50 @@ So, for example, if a user has a project-specific .Rprofile in the
 current working directory at `./.Rprofile` and then a user-specific
 .Rprofile at `~/.Rprofile`, jetty will only source `./.Rprofile` and
 will ignore `~/.Rprofile`. This is a feature I plan to add before long.
+
+## Executing R scripts in a Docker container
+
+While the primary goal of jetty is to execute a function or code chunk
+in an R subprocess running within a Docker container, it also supports
+the execution of entire scripts via the `run_script()` function. This
+feature may be useful when you want to execute a script in an isolated
+environment such as for reproducible scientific code. It is particularly
+helpful when executing scripts that require specific R packages,
+different versions of R, or a clean environment to avoid conflicts with
+your system’s setup.
+
+In order to allow seamless interactions between the Docker subprocess
+and the local file system, the user must specify an execution context—a
+local directory that will be mounted into the Docker container. This
+context directory ensures that the script can access files within it,
+enabling the script to read data from or write results back to that
+directory. The context directory is important because it limits the
+script’s file access to this directory, preventing it from interacting
+with files outside of the specified scope.
+
+For example, suppose we are working within an R project and the script
+we want to execute needs access to all files within the project. We can
+achieve this by setting the context directory as the full project
+directory:
+
+``` r
+jetty::run_script(
+  file = here::here("code/awesome_script.R"),
+  context = here::here()
+)
+```
+
+`run_script()` and `run()` share a lot of functionality. For example, if
+the script above relies on packages that aren’t installed in the Docker
+container, you can instruct jetty to install these packages at runtime:
+
+``` r
+jetty::run_script(
+  file = here::here("code/awesome_script.R"),
+  context = here::here(),
+  install_dependencies = TRUE
+)
+```
+
+All the features discussed above for synchronous, one-off R processes
+also apply to `run_script()`.
